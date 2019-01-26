@@ -7,9 +7,20 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      content: "\\text{Welcome to Tmacs!}\\\\ 1+1=3\\\\ \\log_264=5",
+      content: "\\text{Welcome to }\\tmacs\\\\ 1+1=3\\\\ \\log_264=5",
       macros: [
-        { from: "*", to: "\\cdot", doInsideBrackets: true },
+        //Macros for the katex editor, applied before rendering the math.
+        { from: "#", to: "\\text", doInsideBrackets: true },
+        { from: "*", to: "\\cdot ", doInsideBrackets: true },
+        { from: "\\and", to: "\\land", doInsideBrackets: true },
+        { from: "\\mot", to: "\\Box", doInsideBrackets: true },
+        { from: "\\or", to: "\\lor", doInsideBrackets: true },
+        { from: "\\vec", to: "\\overline", doInsideBrackets: true },
+        {
+          from: "\\tmacs",
+          to: "\\boxed{\\tt{Tmacs}}",
+          doInsideBrackets: true
+        },
         { from: "\n", to: "\\\\", doInsideBrackets: false }
       ],
       oldLen: 0,
@@ -22,9 +33,6 @@ class App extends React.Component {
     this.toggleEditor = this.toggleEditor.bind(this);
     this.changeFont = this.changeFont.bind(this);
   }
-  replaceAll(str, find, replace) {
-    return str.replace(new RegExp(find, "g"), replace);
-  }
   handle(event) {
     let fieldVal = event.target.value;
     this.setState({
@@ -33,7 +41,7 @@ class App extends React.Component {
     });
   }
   //TODO: This might not be the best way to do this. tKatajisto
-  //New macro handler, runs for every macro seperately. *PERFORMANCE ISSUES INCOMING*
+  //FIXME: runs for every macro seperately. *PERFORMANCE ISSUES INCOMING*
   handleMacro(macro, texString) {
     //TODO: Clean up these into something nicer.
     const mathText = texString;
@@ -45,6 +53,13 @@ class App extends React.Component {
     let justStartedInTextBlock = false;
 
     for (let i = 0; i < mathText.length; i++) {
+      if (i + macro.from.length > mathText.length) {
+        mathTextAfterMacro += mathText.substring(
+          i,
+          i + Math.abs(i - mathText.length)
+        );
+        break;
+      }
       if (mathText[i] === "{") lBrackets++;
       if (mathText[i] === "}") rBrackets++;
       if (inTextBlock) {
@@ -67,7 +82,6 @@ class App extends React.Component {
         justStartedInTextBlock = true;
         continue;
       }
-      if (i + macro.from.length > mathText.length) break;
       if (mathText[i] === "{") lBrackets++;
       if (mathText[i] === "}") rBrackets++;
       if (!macro.doInsideBrackets && lBrackets === rBrackets) {
