@@ -1,5 +1,4 @@
-import React, { Component } from "react";
-import logo from "./logo.svg";
+import React from "react";
 import "./App.css";
 
 const katex = require("katex");
@@ -9,7 +8,10 @@ class App extends React.Component {
     super(props);
     this.state = {
       content: "\\text{Welcome to Tmacs!}\\\\ 1+1=3\\\\ \\log_264=5",
-      macros: [["*", "\\cdot "]],
+      macros: [
+        { from: "*", to: "\\cdot", doInsideBrackets: true },
+        { from: "\n", to: "\\\\", doInsideBrackets: false }
+      ],
       oldLen: 0,
       settings: false,
       showEditor: true,
@@ -30,11 +32,63 @@ class App extends React.Component {
       oldLen: fieldVal.length
     });
   }
+  //TODO: This might not be the best way to do this. tKatajisto
+  //New macro handler, runs for every macro seperately. *PERFORMANCE ISSUES INCOMING*
+  handleMacro(macro, texString) {
+    //TODO: Clean up these into something nicer.
+    const mathText = texString;
+    let textIdentifier = "\\text";
+    let mathTextAfterMacro = "";
+    let rBrackets = 0;
+    let lBrackets = 0;
+    let inTextBlock = false;
+    let justStartedInTextBlock = false;
+
+    for (let i = 0; i < mathText.length; i++) {
+      if (mathText[i] === "{") lBrackets++;
+      if (mathText[i] === "}") rBrackets++;
+      if (inTextBlock) {
+        if (justStartedInTextBlock) {
+          if (mathText[i] == "{") {
+            justStartedInTextBlock = false;
+          }
+        } else {
+          if (lBrackets === rBrackets) {
+            inTextBlock = false;
+          }
+        }
+        mathTextAfterMacro += mathText[i];
+        continue;
+      }
+      if (mathText.substring(i, i + textIdentifier.length) == textIdentifier) {
+        i += textIdentifier.length - 1;
+        mathTextAfterMacro += textIdentifier;
+        inTextBlock = true;
+        justStartedInTextBlock = true;
+        continue;
+      }
+      if (i + macro.from.length > mathText.length) break;
+      if (mathText[i] === "{") lBrackets++;
+      if (mathText[i] === "}") rBrackets++;
+      if (!macro.doInsideBrackets && lBrackets === rBrackets) {
+        if (mathText.substring(i, i + macro.from.length) === macro.from) {
+          mathTextAfterMacro += macro.to;
+          i += macro.from.length - 1;
+          continue;
+        }
+      } else if (mathText.substring(i, i + macro.from.length) === macro.from) {
+        mathTextAfterMacro += macro.to;
+        i += macro.from.length - 1;
+        continue;
+      }
+      mathTextAfterMacro += mathText[i];
+    }
+    console.log(mathTextAfterMacro);
+    return mathTextAfterMacro;
+  }
   preprocess(tex) {
     let rdy = tex;
-    console.log(rdy);
-    this.state.macros.map(x => (rdy = rdy.split(x[0]).join(x[1])));
-    console.log(rdy);
+    this.state.macros.map(x => (rdy = this.handleMacro(x, rdy)));
     return rdy;
   }
   toggle() {
@@ -96,7 +150,7 @@ class App extends React.Component {
         <div className="container">
           {this.state.showEditor && (
             <textarea
-              spellcheck="false"
+              spellCheck="false"
               id="textArea"
               className="textArea"
               onChange={this.handle}
