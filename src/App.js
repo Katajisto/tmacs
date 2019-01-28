@@ -7,14 +7,19 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      modifyCount: 0,
       content: "\\text{Welcome to }\\tmacs\\\\ 1+1=3\\\\ \\log_264=5",
       macros: [
+        //TODO: Consider if these macros should actually be stored in component state. This doesn't seem like the brightest idea.
         //Macros for the katex editor, applied before rendering the math.
         { from: "#", to: "\\text", doInsideBrackets: true },
         { from: "*", to: "\\cdot ", doInsideBrackets: true },
         { from: "\\and", to: "\\land", doInsideBrackets: true },
         { from: "\\mot", to: "\\Box", doInsideBrackets: true },
         { from: "\\or", to: "\\lor", doInsideBrackets: true },
+        //FIXME: If there is whitespace between closing and opening brackets it causes \frac{}_HERE_{} to fail.
+        //HACK: Not a real fix for the issue
+        { from: "}\n{", to: "}{", doInsideBrackets: true },
         { from: "\\vec", to: "\\overline", doInsideBrackets: true },
         {
           from: "\\tmacs",
@@ -33,11 +38,28 @@ class App extends React.Component {
     this.toggleEditor = this.toggleEditor.bind(this);
     this.changeFont = this.changeFont.bind(this);
   }
+  //NOTE: Load saved math tKatajisto
+  componentDidMount() {
+    if (localStorage.savedMath) {
+      this.setState({
+        content: localStorage.savedMath
+      });
+    }
+  }
+  //NOTE: Update function.
   handle(event) {
     let fieldVal = event.target.value;
+    let newModifyCount;
+    if (this.state.modifyCount >= 10) {
+      localStorage.setItem("savedMath", fieldVal);
+      newModifyCount = 0;
+    } else {
+      newModifyCount = this.state.modifyCount + 1;
+    }
     this.setState({
       content: fieldVal,
-      oldLen: fieldVal.length
+      oldLen: fieldVal.length,
+      modifyCount: newModifyCount
     });
   }
   //TODO: This might not be the best way to do this. tKatajisto
@@ -51,7 +73,7 @@ class App extends React.Component {
     let lBrackets = 0;
     let inTextBlock = false;
     let justStartedInTextBlock = false;
-
+    //HACK: Modifying i inside the loop is probably not idea.
     for (let i = 0; i < mathText.length; i++) {
       if (i + macro.from.length > mathText.length) {
         mathTextAfterMacro += mathText.substring(
@@ -64,7 +86,7 @@ class App extends React.Component {
       if (mathText[i] === "}") rBrackets++;
       if (inTextBlock) {
         if (justStartedInTextBlock) {
-          if (mathText[i] == "{") {
+          if (mathText[i] === "{") {
             justStartedInTextBlock = false;
           }
         } else {
@@ -75,7 +97,7 @@ class App extends React.Component {
         mathTextAfterMacro += mathText[i];
         continue;
       }
-      if (mathText.substring(i, i + textIdentifier.length) == textIdentifier) {
+      if (mathText.substring(i, i + textIdentifier.length) === textIdentifier) {
         i += textIdentifier.length - 1;
         mathTextAfterMacro += textIdentifier;
         inTextBlock = true;
