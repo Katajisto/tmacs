@@ -7,18 +7,20 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      ctrlDown: false,
+      qDown: false,
       modifyCount: 0,
       content: "\\text{Welcome to }\\tmacs\\\\ 1+1=3\\\\ \\log_264=5",
       macros: [
         //TODO: Consider if these macros should actually be stored in component state. This doesn't seem like the brightest idea.
-        //Macros for the katex editor, applied before rendering the math.
+        //Macros for the katex editor, applied before rendering the math. tKatajisto
         { from: "#", to: "\\text", doInsideBrackets: true },
         { from: "*", to: "\\cdot ", doInsideBrackets: true },
         { from: "\\and", to: "\\land", doInsideBrackets: true },
         { from: "\\mot", to: "\\Box", doInsideBrackets: true },
         { from: "\\or", to: "\\lor", doInsideBrackets: true },
         //FIXME: If there is whitespace between closing and opening brackets it causes \frac{}_HERE_{} to fail.
-        //HACK: Not a real fix for the issue
+        //HACK: Not a real fix for the issue. tKatajisto
         { from: "}\n{", to: "}{", doInsideBrackets: true },
         { from: "\\vec", to: "\\overline", doInsideBrackets: true },
         {
@@ -37,16 +39,38 @@ class App extends React.Component {
     this.toggle = this.toggle.bind(this);
     this.toggleEditor = this.toggleEditor.bind(this);
     this.changeFont = this.changeFont.bind(this);
+    this.handleKeydown = this.handleKeydown.bind(this);
+    this.handleKeyup = this.handleKeyup.bind(this);
   }
-  //NOTE: Load saved math tKatajisto
+  handleKeydown(event) {
+    if (event.which == 17) this.setState({ ctrlDown: true });
+    if (event.which == 81) this.setState({ qDown: true });
+    if (this.state.ctrlDown && this.state.qDown) {
+      let expression = prompt("Enter math:");
+      if (expression != "" && expression != null) alert(eval(expression));
+      this.setState({
+        ctrlDown: false,
+        qDown: false
+      });
+    }
+    console.log();
+  }
+  handleKeyup(event) {
+    if (event.which == 17) this.setState({ ctrlDown: false });
+    if (event.which == 81) this.setState({ qDown: false });
+  }
   componentDidMount() {
+    //NOTE: Load saved math. tKatajisto
     if (localStorage.savedMath) {
       this.setState({
         content: localStorage.savedMath
       });
     }
+    //NOTE: This is a small calculator thingy wich prompts the user for an expression and returns the result as an alert. tKatajisto
+    document.addEventListener("keydown", this.handleKeydown);
+    document.addEventListener("keyup", this.handleKeyup);
   }
-  //NOTE: Update function.
+  //NOTE: Update function. tKatajisto
   handle(event) {
     let fieldVal = event.target.value;
     let newModifyCount;
@@ -119,7 +143,6 @@ class App extends React.Component {
       }
       mathTextAfterMacro += mathText[i];
     }
-    console.log(mathTextAfterMacro);
     return mathTextAfterMacro;
   }
   preprocess(tex) {
@@ -142,6 +165,7 @@ class App extends React.Component {
       texFont: event.target.value
     });
   }
+
   render() {
     const math = katex.renderToString(this.preprocess(this.state.content), {
       throwOnError: false
