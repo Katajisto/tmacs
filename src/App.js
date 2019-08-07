@@ -9,6 +9,7 @@ class App extends React.Component {
     this.state = {
       ctrlDown: false,
       qDown: false,
+      xDown: false,
       modifyCount: 0,
       content: "\\text{Welcome to }\\tmacs\\\\ 1+1=3\\\\ \\log_264=5",
       macros: [
@@ -33,7 +34,9 @@ class App extends React.Component {
       oldLen: 0,
       settings: false,
       showEditor: true,
-      texFont: 20
+      texFont: 20,
+      doRenderKatex: true,
+      cachedKatex: ""
     };
     this.handle = this.handle.bind(this);
     this.toggle = this.toggle.bind(this);
@@ -45,6 +48,7 @@ class App extends React.Component {
   handleKeydown(event) {
     if (event.which == 17) this.setState({ ctrlDown: true });
     if (event.which == 81) this.setState({ qDown: true });
+    if (event.which == 88) this.setState({ xDown: true });
     if (this.state.ctrlDown && this.state.qDown) {
       let expression = prompt("Enter math:");
       if (expression != "" && expression != null) alert(eval(expression));
@@ -53,22 +57,38 @@ class App extends React.Component {
         qDown: false
       });
     }
+    if (this.state.ctrlDown && this.state.xDown) {
+      this.setState({
+        doRenderKatex: true,
+        ctrlDown: false,
+        xDown: false
+      });
+    }
     console.log();
   }
   handleKeyup(event) {
     if (event.which == 17) this.setState({ ctrlDown: false });
     if (event.which == 81) this.setState({ qDown: false });
+    if (event.which == 88) this.setState({ xDown: false });
   }
   componentDidMount() {
     //NOTE: Load saved math. tKatajisto
     if (localStorage.savedMath) {
       this.setState({
-        content: localStorage.savedMath
+        content: localStorage.savedMath,
+        doRenderKatex: true
       });
     }
     //NOTE: This is a small calculator thingy wich prompts the user for an expression and returns the result as an alert. tKatajisto
     document.addEventListener("keydown", this.handleKeydown);
     document.addEventListener("keyup", this.handleKeyup);
+    this.interval = setInterval(
+      () => this.setState({ doRenderKatex: true }),
+      3000
+    );
+  }
+  componentWillUnmount() {
+    clearInterval(this.interval);
   }
   //NOTE: Update function. tKatajisto
   handle(event) {
@@ -167,9 +187,18 @@ class App extends React.Component {
   }
 
   render() {
-    const math = katex.renderToString(this.preprocess(this.state.content), {
-      throwOnError: false
-    });
+    let math;
+    if (this.state.doRenderKatex === true) {
+      math = katex.renderToString(this.preprocess(this.state.content), {
+        throwOnError: false
+      });
+      this.setState({
+        doRenderKatex: false,
+        cachedKatex: math
+      });
+    } else {
+      math = this.state.cachedKatex;
+    }
     return (
       <div>
         <div className="topBar">
