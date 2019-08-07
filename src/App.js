@@ -35,6 +35,7 @@ class App extends React.Component {
       settings: false,
       showEditor: true,
       texFont: 20,
+      refreshTimerMS: 300,
       doRenderKatex: true,
       cachedKatex: ""
     };
@@ -185,6 +186,11 @@ class App extends React.Component {
       texFont: event.target.value
     });
   }
+  changeRefresh(event) {
+    this.setState({
+      refreshTimerMS: event.target.value
+    });
+  }
 
   render() {
     let math;
@@ -229,6 +235,18 @@ class App extends React.Component {
                   min="1"
                   max="100"
                   value={this.state.texFont}
+                  class="slider"
+                  id="myRange"
+                />
+              </div>
+              <div class="slidecontainer">
+                Refresh frequency [in MS]:{" "}
+                <input
+                  onChange={this.changeRefresh}
+                  type="range"
+                  min="1"
+                  max="10000"
+                  value={this.state.refreshTimerMS}
                   class="slider"
                   id="myRange"
                 />
